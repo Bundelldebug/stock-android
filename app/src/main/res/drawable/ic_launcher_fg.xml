@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Safe-zone centered (32..76dp) One UI rising chart bars + trend line -->
+    <path android:fillColor="#44FFFFFF" android:pathData="M34,60h8a4,4 0 0 1 4,4v8a4,4 0 0 1 -4,4h-8a4,4 0 0 1 -4,-4v-8a4,4 0 0 1 4,-4z" />
+    <path android:fillColor="#77FFFFFF" android:pathData="M48,50h8a4,4 0 0 1 4,4v18a4,4 0 0 1 -4,4h-8a4,4 0 0 1 -4,-4v-18a4,4 0 0 1 4,-4z" />
+    <path android:fillColor="#B3FFFFFF" android:pathData="M62,40h8a4,4 0 0 1 4,4v28a4,4 0 0 1 -4,4h-8a4,4 0 0 1 -4,-4v-28a4,4 0 0 1 4,-4z" />
+    <!-- Crisp rising line -->
+    <path
+        android:pathData="M34,54L46,44L56,48L72,33"
+        android:strokeWidth="4.6"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000" />
+    <path android:fillColor="#FF4BE39A" android:pathData="M68,33a4,4 0 1 1 8,0a4,4 0 1 1 -8,0z" />
+</vector>

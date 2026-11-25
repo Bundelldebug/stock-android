@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">주식</string>
+    <string name="tab_watch">관심 종목</string>
+    <string name="tab_chart">차트</string>
+    <string name="tab_portfolio">포트폴리오</string>
+    <string name="tab_settings">설정</string>
+    <string name="search">검색</string>
+    <string name="search_hint">종목명 또는 티커 검색</string>
+    <string name="cancel">취소</string>
+    <string name="save">저장</string>
+    <string name="accent_blue">블루</string>
+    <string name="accent_red">레드</string>
+    <string name="accent_violet">바이올렛</string>
+    <string name="accent_teal">틸</string>
+    <string name="accent_green">그린</string>
+    <string name="accent_orange">오렌지</string>
+    <string name="accent_pink">핑크</string>
+    <string name="accent_dynamic">배경화면 색상</string>
+</resources>
