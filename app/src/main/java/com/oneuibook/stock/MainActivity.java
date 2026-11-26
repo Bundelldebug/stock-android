@@ -20,7 +20,7 @@ import java.util.List;
 
 /** 주식 (9.5.0) — 관심 종목, 차트, 포트폴리오. */
 public final class MainActivity extends Activity implements Dock.Listener, Header.Listener, Market.Listener {
-    static final String VERSION = "9.5.2";
+    static final String VERSION = "9.5.3";
 
     FrameLayout root;
     Glass.Backdrop backdrop;
@@ -221,10 +221,17 @@ public final class MainActivity extends Activity implements Dock.Listener, Heade
     @Override public void onTab(int index, boolean reselect) {
         if (searchPage != null && searchPage.getVisibility() == View.VISIBLE) onExitSearch();
         if (reselect) { tabs[tab].top().scrollToTop(); return; }
+        tabs[tab].animate().cancel();
         tabs[tab].setVisibility(View.GONE);
         tab = index;
-        tabs[tab].setVisibility(View.VISIBLE);
-        tabs[tab].top().show();
+        NavStack next = tabs[tab];
+        next.animate().cancel();
+        next.setVisibility(View.VISIBLE);
+        next.top().show();
+        next.setAlpha(0.45f);
+        next.setScaleX(0.985f);
+        next.setScaleY(0.985f);
+        next.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(220).setInterpolator(Ui.EMPHASIZED).start();
         if (sidebar != null) sidebar.setSelected(tab);
         syncHeader();
     }
@@ -248,7 +255,9 @@ public final class MainActivity extends Activity implements Dock.Listener, Heade
     @Override public void onBack() { onBackPressed(); }
     @Override public void onBackPressed() {
         if (GlassMenu.dismissAny(root)) return;
+        if (sidebar != null) { closeSidebar(); return; }
         if (searchPage != null && searchPage.getVisibility() == View.VISIBLE) { onExitSearch(); return; }
+        if (tab != 0) { dock.select(0, true); onTab(0, false); return; }
         super.onBackPressed();
     }
 
