@@ -70,12 +70,34 @@ public class StockUiTest {
         bmp.recycle();
     }
 
+    @Test public void watchlistAddCatalogAndLiveActivityNowBarNotificationWork() {
+        Context ctx = RuntimeEnvironment.getApplication();
+        Market.init(ctx);
+        assertTrue(Market.searchCatalog("카카오").size() >= 1);
+        assertTrue(Market.searchCatalog("NVDA").size() >= 1);
+        assertTrue(Market.addToWatchlist(ctx, "GOOGL", "Alphabet", "NASDAQ", "USD"));
+        assertTrue(Market.isWatched("GOOGL"));
+        Market.Quote q = Market.findExact("GOOGL");
+        assertNotNull(q);
+        assertTrue(q.series.length >= 20);
+        assertEquals(q.series.length, q.timestamps.length);
+        assertEquals(q.series.length, q.volumes.length);
+
+        android.app.Notification n = StockLiveNotification.buildLiveNotification(ctx, q, null);
+        assertNotNull(n);
+        assertTrue((n.flags & android.app.Notification.FLAG_ONGOING_EVENT) != 0);
+        assertTrue(n.extras.getBoolean("android.requestPromotedOngoing", false));
+        assertTrue(n.extras.getBoolean("android.ongoingActivity", false));
+        assertTrue(n.extras.getString("stock.live.chip", "").contains("Alphab"));
+        Market.removeFromWatchlist(ctx, "GOOGL");
+    }
+
     @Test @Config(qualifiers = "ko-rKR-w412dp-h915dp-xxhdpi")
     public void phoneScreens() throws Exception {
         ActivityController<MainActivity> ctrl = Robolectric.buildActivity(MainActivity.class).setup();
         MainActivity act = ctrl.get();
         assertEquals("주식", act.getString(R.string.app_name));
-        assertEquals("9.5.3", MainActivity.VERSION);
+        assertEquals("9.5.4", MainActivity.VERSION);
         saveShot(act.root, 1236, 2745, "phone-watch.png");
         act.dock.select(1, false); act.onTab(1, false);
         org.robolectric.shadows.ShadowLooper.idleMainLooper(350, java.util.concurrent.TimeUnit.MILLISECONDS);

@@ -20,7 +20,7 @@ import java.util.List;
 
 /** 주식 (9.5.0) — 관심 종목, 차트, 포트폴리오. */
 public final class MainActivity extends Activity implements Dock.Listener, Header.Listener, Market.Listener {
-    static final String VERSION = "9.5.3";
+    static final String VERSION = "9.5.4";
 
     FrameLayout root;
     Glass.Backdrop backdrop;
@@ -112,6 +112,27 @@ public final class MainActivity extends Activity implements Dock.Listener, Heade
         if (sidebarWanted) root.post(() -> { if (tabletUi()) openSidebar(false); });
         Market.listeners.add(this);
         Market.refreshAll(this);
+        StockLiveNotification.updateLive(this);
+        handleOpenSymbol(getIntent());
+    }
+
+    @Override protected void onNewIntent(android.content.Intent intent) {
+        super.onNewIntent(intent);
+        handleOpenSymbol(intent);
+    }
+
+    private void handleOpenSymbol(android.content.Intent in) {
+        if (in == null) return;
+        String sym = in.getStringExtra("open_symbol");
+        if (sym != null && !sym.isEmpty()) openChart(sym);
+    }
+
+    void requestNotificationsIfNeeded() {
+        if (android.os.Build.VERSION.SDK_INT >= 33
+                && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 501);
+        }
     }
 
     @Override protected void onDestroy() { Market.listeners.remove(this); super.onDestroy(); }
@@ -250,6 +271,10 @@ public final class MainActivity extends Activity implements Dock.Listener, Heade
     @Override public void onHeaderButton(int icon, RectF anchor) {
         if (icon == Icons.PLUS) Pages.openAddTickerSheet(this);
         else if (icon == Icons.REFRESH) Market.refreshAll(this);
+        else if (icon == Icons.BELL) {
+            Market.Quote q = Market.find(Market.selectedSymbol);
+            if (q != null) Pages.openAlertSheet(this, q);
+        }
     }
 
     @Override public void onBack() { onBackPressed(); }
