@@ -20,7 +20,7 @@ import java.util.List;
 
 /** 주식 (9.5.0) — 관심 종목, 차트, 포트폴리오. */
 public final class MainActivity extends Activity implements Dock.Listener, Header.Listener, Market.Listener {
-    static final String VERSION = "9.5.1";
+    static final String VERSION = "9.5.2";
 
     FrameLayout root;
     Glass.Backdrop backdrop;

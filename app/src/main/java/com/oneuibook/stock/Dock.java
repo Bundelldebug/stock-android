@@ -69,9 +69,9 @@ final class Dock extends FrameLayout {
     private final Glass.Surface miniGlass = new Glass.Surface();
     private final RenderNode contentNode = new RenderNode("dock-content");
 
-    private final Ui.Spring lensX = new Ui.Spring(420f, 0.72f, 0.4f);
-    private final Ui.Spring lift = new Ui.Spring(540f, 0.76f, 0.002f);
-    private final Ui.Spring panelRecoil = new Ui.Spring(340f, 0.80f, 0.1f);
+    private final Ui.Spring lensX = new Ui.Spring(380f, 0.98f, 0.4f);
+    private final Ui.Spring lift = new Ui.Spring(460f, 1.0f, 0.002f);
+    private final Ui.Spring panelRecoil = new Ui.Spring(340f, 0.96f, 0.1f);
     private final Ui.Spring miniPress = new Ui.Spring(700f, 0.9f, 0.002f);
     private final Ui.Spring searchPress = new Ui.Spring(700f, 0.9f, 0.002f);
     private final Ui.Spring barPress = new Ui.Spring(520f, 0.85f, 0.002f);

@@ -75,7 +75,7 @@ public class StockUiTest {
         ActivityController<MainActivity> ctrl = Robolectric.buildActivity(MainActivity.class).setup();
         MainActivity act = ctrl.get();
         assertEquals("주식", act.getString(R.string.app_name));
-        assertEquals("9.5.1", MainActivity.VERSION);
+        assertEquals("9.5.2", MainActivity.VERSION);
         saveShot(act.root, 1236, 2745, "phone-watch.png");
         act.dock.select(1, false); act.onTab(1, false);
         saveShot(act.root, 1236, 2745, "phone-chart.png");

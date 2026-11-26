@@ -198,40 +198,83 @@ final class Widgets {
         }
     }
 
-    /** Spring-animated toggle switch. */
+    /** Kyant0 AndroidLiquidGlass LiquidToggle (64×28dp track, 40×24dp refractive capsule thumb, critically damped). */
     static final class Toggle extends View {
         interface OnChange { void onChange(boolean on); }
         boolean on;
         OnChange change;
-        private final Ui.Spring p = new Ui.Spring(520f, 0.78f, 0.002f);
+        private final Ui.Spring p = new Ui.Spring(380f, 1.0f, 0.002f);
+        private final Ui.Spring press = new Ui.Spring(460f, 1.0f, 0.002f);
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final RectF r = new RectF();
+        private final Paint rimP = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final RectF r = new RectF(), knob = new RectF();
+        private float downX;
+        private boolean dragged;
 
         Toggle(Context c, boolean initial) {
             super(c);
             on = initial;
             p.snap(initial ? 1f : 0f);
+            press.snap(0f);
             p.onUpdate = this::invalidate;
-            setLayoutParams(new LinearLayout.LayoutParams(Ui.dp(50), Ui.dp(30)));
-            setOnClickListener(v -> {
-                on = !on;
-                p.to(on ? 1f : 0f);
-                if (change != null) change.onChange(on);
-            });
+            press.onUpdate = this::invalidate;
+            rimP.setStyle(Paint.Style.STROKE);
+            setLayoutParams(new LinearLayout.LayoutParams(Ui.dp(64), Ui.dp(36)));
+        }
+
+        @Override public boolean onTouchEvent(MotionEvent e) {
+            float dragW = Math.max(1f, Ui.dpf(20));
+            switch (e.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(true);
+                    downX = e.getX(); dragged = false; press.to(1f); return true;
+                case MotionEvent.ACTION_MOVE: {
+                    float dx = e.getX() - downX;
+                    if (Math.abs(dx) > Ui.dpf(3)) dragged = true;
+                    if (dragged) p.to(Ui.clamp((on ? 1f : 0f) + dx / dragW, 0f, 1f));
+                    return true;
+                }
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL: {
+                    boolean next = dragged ? p.value >= 0.5f : !on;
+                    if (e.getActionMasked() == MotionEvent.ACTION_CANCEL) next = on;
+                    boolean changed = next != on;
+                    on = next;
+                    p.to(on ? 1f : 0f);
+                    postDelayed(() -> press.to(0f), 110);
+                    if (changed && change != null) change.onChange(on);
+                    return true;
+                }
+            }
+            return true;
         }
 
         @Override protected void onDraw(Canvas c) {
             float w = getWidth(), h = getHeight();
             float k = Ui.clamp(p.value, 0f, 1f);
-            int offCol = Ui.dark ? 0xFF3A3A3F : 0xFFD4D4DC;
-            paint.setColor(Ui.mix(offCol, Ui.ACCENT, k));
-            r.set(0, 0, w, h);
-            c.drawRoundRect(r, h / 2f, h / 2f, paint);
-            float pad = Ui.dpf(3);
-            float d = h - pad * 2;
-            float cx = Ui.lerp(pad + d / 2f, w - pad - d / 2f, k);
-            paint.setColor(0xFFFFFFFF);
-            c.drawCircle(cx, h / 2f, d / 2f, paint);
+            float pr = Ui.clamp(press.value, 0f, 1f);
+            float trackH = Ui.dpf(28), top = (h - trackH) * 0.5f;
+            int offCol = Ui.dark ? 0x5C787880 : 0x33787878;
+            int onCol = Ui.gStyle ? Ui.ACCENT : (Ui.dark ? 0xFF30D158 : 0xFF34C759);
+            paint.setColor(Ui.mix(offCol, onCol, k));
+            r.set(0f, top, w, top + trackH);
+            c.drawRoundRect(r, trackH * 0.5f, trackH * 0.5f, paint);
+            float pad = Ui.dpf(2), baseW = Ui.dpf(40), baseH = Ui.dpf(24);
+            float cx = pad + baseW * 0.5f + Math.max(0f, w - baseW - pad * 2f) * k;
+            float sc = Ui.lerp(1f, 1.38f, pr);
+            float vel = Ui.clamp(p.velocity * 0.04f, -0.2f, 0.2f);
+            float kw = baseW * sc / (1f - Math.abs(vel) * 0.75f);
+            float kh = baseH * sc * (1f - Math.abs(vel) * 0.25f);
+            knob.set(cx - kw * 0.5f, h * 0.5f - kh * 0.5f, cx + kw * 0.5f, h * 0.5f + kh * 0.5f);
+            paint.setColor(Ui.gStyle ? 0xFFFFFFFF : Ui.mix(0xFFFFFFFF, 0x55FFFFFF, pr));
+            paint.setShadowLayer(Ui.dpf(3.5f), 0, Ui.dpf(1.2f), 0x24000000);
+            c.drawRoundRect(knob, kh * 0.5f, kh * 0.5f, paint);
+            paint.clearShadowLayer();
+            if (pr > 0.02f && !Ui.gStyle) {
+                rimP.setStrokeWidth(Ui.dpf(1.2f));
+                rimP.setColor(Ui.alpha(0xFFFFFFFF, 0.78f * pr));
+                c.drawRoundRect(knob, kh * 0.5f, kh * 0.5f, rimP);
+            }
         }
     }
 
