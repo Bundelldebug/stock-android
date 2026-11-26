@@ -97,7 +97,7 @@ final class StockLiveNotification {
         if (nm == null) return;
         boolean dirty = false;
         int idx = 0;
-        for (Market.Quote q : Market.watch) {
+        for (Market.Quote q : new java.util.ArrayList<>(Market.watch)) {
             idx++;
             if (!q.alertEnabled || q.targetPrice <= 0 || q.price <= 0) continue;
             boolean hit = q.alertAbove ? (q.price >= q.targetPrice) : (q.price <= q.targetPrice);
@@ -125,7 +125,8 @@ final class StockLiveNotification {
         Intent openIn = new Intent(c, MainActivity.class);
         openIn.putExtra("open_symbol", q.symbol);
         openIn.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-        PendingIntent openPi = PendingIntent.getActivity(c, 10, openIn,
+        int reqCode = isAlert ? (ID_ALERT_BASE + Math.abs(q.symbol.hashCode() % 1000)) : 10;
+        PendingIntent openPi = PendingIntent.getActivity(c, reqCode, openIn,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         Intent refIn = new Intent(c, StockLiveReceiver.class).setAction(ACTION_REFRESH);

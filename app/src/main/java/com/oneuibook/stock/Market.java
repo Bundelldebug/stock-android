@@ -89,8 +89,8 @@ final class Market {
     static final ExecutorService EXEC = Executors.newCachedThreadPool();
     static final Handler MAIN = new Handler(Looper.getMainLooper());
     static final CopyOnWriteArrayList<Listener> listeners = new CopyOnWriteArrayList<>();
-    static final List<Quote> indices = new ArrayList<>();
-    static final List<Quote> watch = new ArrayList<>();
+    static final List<Quote> indices = new CopyOnWriteArrayList<>();
+    static final List<Quote> watch = new CopyOnWriteArrayList<>();
     static String selectedSymbol = "005930.KS";
     static String liveSymbol = "";
     static String chartRange = "1mo"; // 1d, 5d, 1mo, 3mo, 1y, 5y
@@ -334,6 +334,13 @@ final class Market {
     static String fmtVal(double val, String currency) {
         if ("KRW".equals(currency)) return String.format(Locale.KOREA, "%,d원", Math.round(val));
         if ("PT".equals(currency)) return String.format(Locale.US, "%,.2f", val);
+        if ("JPY".equals(currency)) return String.format(Locale.US, "¥%,.0f", val);
+        if ("EUR".equals(currency)) return String.format(Locale.US, "€%,.2f", val);
+        if ("GBP".equals(currency)) return String.format(Locale.US, "£%,.2f", val);
+        if ("HKD".equals(currency)) return String.format(Locale.US, "HK$%,.2f", val);
+        if (currency != null && !currency.isEmpty() && !"USD".equals(currency)) {
+            return String.format(Locale.US, "%s %,.2f", currency, val);
+        }
         return String.format(Locale.US, "$%,.2f", val);
     }
 
@@ -343,9 +350,7 @@ final class Market {
         double d = q.change();
         String sgn = d >= 0 ? "+" : "-";
         double a = Math.abs(d);
-        if ("KRW".equals(q.currency)) return sgn + String.format(Locale.KOREA, "%,d원", Math.round(a));
-        if ("PT".equals(q.currency)) return sgn + String.format(Locale.US, "%,.2f", a);
-        return sgn + String.format(Locale.US, "$%,.2f", a);
+        return sgn + fmtVal(a, q.currency);
     }
 
     static String fmtPct(double pct) {
@@ -381,21 +386,30 @@ final class Market {
     }
 
     /** Refreshes quotes asynchronously from Yahoo Finance chart API. */
-    static void refreshAll(Context c) {
-        if ("robolectric".equals(android.os.Build.FINGERPRINT)) return;
+    static void refreshAll(Context c) { refreshAll(c, null); }
+
+    static void refreshAll(Context c, Runnable onDone) {
+        if ("robolectric".equals(android.os.Build.FINGERPRINT)) {
+            if (onDone != null) MAIN.post(onDone);
+            return;
+        }
         Context app = c.getApplicationContext();
         EXEC.execute(() -> {
-            List<Quote> all = new ArrayList<>(indices);
-            all.addAll(watch);
-            boolean any = false;
-            for (Quote q : all) {
-                if (fetchInto(q, chartRange)) any = true;
-            }
-            if (any) {
-                saveWatch(app);
-                StockLiveNotification.checkTargets(app);
-                StockLiveNotification.updateLive(app);
-                MAIN.post(() -> { for (Listener l : listeners) l.onMarketUpdated(); });
+            try {
+                List<Quote> all = new ArrayList<>(indices);
+                all.addAll(watch);
+                boolean any = false;
+                for (Quote q : all) {
+                    if (fetchInto(q, chartRange)) any = true;
+                }
+                if (any) {
+                    saveWatch(app);
+                    StockLiveNotification.checkTargets(app);
+                    StockLiveNotification.updateLive(app);
+                    MAIN.post(() -> { for (Listener l : listeners) l.onMarketUpdated(); });
+                }
+            } finally {
+                if (onDone != null) MAIN.post(onDone);
             }
         });
     }
@@ -421,8 +435,16 @@ final class Market {
             }
             JSONObject res = new JSONObject(bos.toString("UTF-8")).getJSONObject("chart").getJSONArray("result").getJSONObject(0);
             JSONObject meta = res.getJSONObject("meta");
-            q.price = meta.optDouble("regularMarketPrice", q.price);
-            q.prevClose = meta.optDouble("chartPreviousClose", meta.optDouble("previousClose", q.prevClose));
+            String metaCur = meta.optString("currency", "");
+            if (!metaCur.isEmpty() && !"PT".equals(q.currency)) q.currency = metaCur;
+            double newPrice = meta.optDouble("regularMarketPrice", q.price);
+            double prevDay = meta.optDouble("regularMarketPreviousClose",
+                    meta.optDouble("previousClose", Double.NaN));
+            if (Double.isNaN(prevDay) || prevDay <= 0) {
+                if ("1d".equals(range)) prevDay = meta.optDouble("chartPreviousClose", q.prevClose);
+                else prevDay = q.prevClose;
+            }
+            q.price = newPrice;
             q.dayHigh = meta.optDouble("regularMarketDayHigh", q.dayHigh);
             q.dayLow = meta.optDouble("regularMarketDayLow", q.dayLow);
             q.week52High = meta.optDouble("fiftyTwoWeekHigh", q.week52High);
@@ -434,8 +456,8 @@ final class Market {
             JSONArray closes = quoteObj.optJSONArray("close");
             JSONArray opens = quoteObj.optJSONArray("open");
             JSONArray vols = quoteObj.optJSONArray("volume");
-            if (opens != null && opens.length() > 0 && !opens.isNull(0)) {
-                q.open = opens.optDouble(0, q.open);
+            if (opens != null && opens.length() > 0 && !opens.isNull(opens.length() - 1)) {
+                q.open = opens.optDouble(opens.length() - 1, q.open);
             }
             if (closes != null) {
                 List<Double> pts = new ArrayList<>();
@@ -449,16 +471,24 @@ final class Market {
                     }
                 }
                 if (pts.size() >= 2) {
-                    q.series = new double[pts.size()];
-                    q.timestamps = new long[pts.size()];
-                    q.volumes = new long[pts.size()];
-                    for (int i = 0; i < pts.size(); i++) {
-                        q.series[i] = pts.get(i);
-                        q.timestamps[i] = tList.get(i);
-                        q.volumes[i] = vList.get(i);
+                    if ("1d".equals(interval) && (Double.isNaN(meta.optDouble("regularMarketPreviousClose", Double.NaN))
+                            && Double.isNaN(meta.optDouble("previousClose", Double.NaN)))) {
+                        prevDay = pts.get(pts.size() - 2);
                     }
+                    double[] nextSeries = new double[pts.size()];
+                    long[] nextTs = new long[pts.size()];
+                    long[] nextVols = new long[pts.size()];
+                    for (int i = 0; i < pts.size(); i++) {
+                        nextSeries[i] = pts.get(i);
+                        nextTs[i] = tList.get(i);
+                        nextVols[i] = vList.get(i);
+                    }
+                    q.timestamps = nextTs;
+                    q.volumes = nextVols;
+                    q.series = nextSeries;
                 }
             }
+            if (prevDay > 0) q.prevClose = prevDay;
             q.fillDerivedDefaults();
             return true;
         } catch (Throwable ignored) { return false; }

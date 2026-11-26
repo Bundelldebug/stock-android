@@ -97,7 +97,7 @@ public class StockUiTest {
         ActivityController<MainActivity> ctrl = Robolectric.buildActivity(MainActivity.class).setup();
         MainActivity act = ctrl.get();
         assertEquals("주식", act.getString(R.string.app_name));
-        assertEquals("9.5.4", MainActivity.VERSION);
+        assertEquals("9.5.5", MainActivity.VERSION);
         saveShot(act.root, 1236, 2745, "phone-watch.png");
         act.dock.select(1, false); act.onTab(1, false);
         org.robolectric.shadows.ShadowLooper.idleMainLooper(350, java.util.concurrent.TimeUnit.MILLISECONDS);

@@ -13,8 +13,11 @@ public final class StockLiveReceiver extends BroadcastReceiver {
         if (StockLiveNotification.ACTION_DISMISS.equals(act)) {
             StockLiveNotification.pinLive(context, "");
         } else if (StockLiveNotification.ACTION_REFRESH.equals(act)) {
-            Market.refreshAll(context);
-            StockLiveNotification.updateLive(context);
+            PendingResult pr = goAsync();
+            Market.refreshAll(context, () -> {
+                StockLiveNotification.updateLive(context);
+                if (pr != null) try { pr.finish(); } catch (Throwable ignored) {}
+            });
         }
     }
 }

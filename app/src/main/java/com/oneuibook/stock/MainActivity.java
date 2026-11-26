@@ -20,7 +20,7 @@ import java.util.List;
 
 /** 주식 (9.5.0) — 관심 종목, 차트, 포트폴리오. */
 public final class MainActivity extends Activity implements Dock.Listener, Header.Listener, Market.Listener {
-    static final String VERSION = "9.5.4";
+    static final String VERSION = "9.5.5";
 
     FrameLayout root;
     Glass.Backdrop backdrop;
@@ -73,6 +73,7 @@ public final class MainActivity extends Activity implements Dock.Listener, Heade
             android.graphics.Insets sys = insets.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
             int ime = insets.getInsets(WindowInsets.Type.ime()).bottom;
             boolean changed = sys.top != Ui.statusInset || sys.bottom != Ui.navInset;
+            boolean imeChanged = ime != Ui.imeInset;
             Ui.statusInset = sys.top; Ui.navInset = sys.bottom;
             Ui.cutoutLeft = sys.left; Ui.cutoutRight = sys.right; Ui.imeInset = ime;
             dock.setImeOffset(ime);
@@ -80,6 +81,12 @@ public final class MainActivity extends Activity implements Dock.Listener, Heade
             if (changed) {
                 for (NavStack s : tabs) if (s != null) s.applyInsets();
                 if (searchPage != null) searchPage.applyInsets();
+            }
+            if (imeChanged || changed) {
+                for (int i = 0; i < root.getChildCount(); i++) {
+                    View child = root.getChildAt(i);
+                    if (child instanceof GlassMenu) child.requestLayout();
+                }
             }
             return WindowInsets.CONSUMED;
         });
@@ -135,6 +142,15 @@ public final class MainActivity extends Activity implements Dock.Listener, Heade
         }
     }
 
+    @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 501 && grantResults.length > 0
+                && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            StockLiveNotification.updateLive(this);
+            StockLiveNotification.checkTargets(this);
+        }
+    }
+
     @Override protected void onDestroy() { Market.listeners.remove(this); super.onDestroy(); }
     @Override public void onMarketUpdated() { reloadAll(); if (sidebar != null) sidebar.refresh(); }
 
@@ -148,11 +164,22 @@ public final class MainActivity extends Activity implements Dock.Listener, Heade
     @Override public void onConfigurationChanged(Configuration c) {
         super.onConfigurationChanged(c);
         Ui.init(this, prefs(this));
-        fitHeader();
-        dock.requestLayout();
-        for (NavStack s : tabs) if (s != null) { s.applyInsets(); s.rebuildAll(); }
-        if (tabletUi() && sidebarWanted && sidebar == null) openSidebar(false);
-        else if (!tabletUi() && sidebar != null) closeSidebar();
+        root.post(() -> {
+            if (isFinishing() || isDestroyed()) return;
+            fitHeader();
+            dock.requestLayout();
+            for (NavStack s : tabs) if (s != null) { s.applyInsets(); s.rebuildAll(); }
+            if (searchPage != null) { searchPage.applyInsets(); searchPage.rebuild(); }
+            if (tabletUi() && sidebarWanted && sidebar == null) openSidebar(false);
+            else if (!tabletUi() && sidebar != null) hideSidebarTemporarily();
+        });
+    }
+
+    private void hideSidebarTemporarily() {
+        if (sidebar == null) return;
+        applySidebar(0f, Sidebar.widthFor(rootW()));
+        root.removeView(sidebar);
+        sidebar = null;
     }
 
     void setLightStatus(boolean light) {

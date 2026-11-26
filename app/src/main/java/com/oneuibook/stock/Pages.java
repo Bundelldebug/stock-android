@@ -155,12 +155,14 @@ final class Pages {
         nameLine.setGravity(Gravity.CENTER_VERTICAL);
         TextView nm = Ui.text(c, q.name, 15.5f, Ui.semibold, Ui.text());
         nm.setMaxLines(1); nm.setEllipsize(TextUtils.TruncateAt.END);
-        nameLine.addView(nm);
+        nameLine.addView(nm, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         boolean isLive = q.symbol.equalsIgnoreCase(Market.liveSymbol);
         if (isLive || q.alertEnabled) {
             TextView dot = Widgets.pillBadge(c, isLive ? "LIVE" : "알림",
                     Ui.alpha(Ui.ACCENT, Ui.dark ? 0.25f : 0.13f), Ui.ACCENT);
-            nameLine.addView(dot);
+            LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            dlp.leftMargin = Ui.dp(6);
+            nameLine.addView(dot, dlp);
         }
         left.addView(nameLine);
         left.addView(Ui.text(c, q.symbol + " · " + q.market, 12, Ui.regular, Ui.text2()));
@@ -419,7 +421,10 @@ final class Pages {
                 if (q.shares <= 0) continue;
                 count++;
                 double diffPct = q.avgCost > 0 ? (q.price - q.avgCost) / q.avgCost * 100.0 : 0;
-                String sub = String.format(Locale.US, "%.0f주 · %s", q.shares, Market.fmtPct(diffPct));
+                String shStr = Math.abs(q.shares - Math.rint(q.shares)) < 1e-6
+                        ? String.format(Locale.US, "%.0f", q.shares)
+                        : String.format(Locale.US, "%.4f", q.shares).replaceAll("0+$", "").replaceAll("\\.$", "");
+                String sub = shStr + "주 · " + Market.fmtPct(diffPct);
                 g.row(Icons.WALLET, Market.deltaColor(diffPct), q.name, sub, true, v -> openHoldingSheet(main, q));
             }
             if (count == 0) content.addView(Widgets.caption(c, "관심 종목을 길게 눌러 보유 수량을 입력하세요."));
@@ -608,7 +613,10 @@ final class Pages {
     static void openHoldingSheet(MainActivity m, Market.Quote q) {
         LinearLayout form = new LinearLayout(m);
         form.setOrientation(LinearLayout.VERTICAL);
-        EditText shEt = Widgets.formField(m, "보유 수량", "0", String.valueOf((long) q.shares), InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL, form);
+        String shInit = Math.abs(q.shares - Math.rint(q.shares)) < 1e-6
+                ? String.valueOf((long) Math.rint(q.shares))
+                : String.format(Locale.US, "%.4f", q.shares).replaceAll("0+$", "").replaceAll("\\.$", "");
+        EditText shEt = Widgets.formField(m, "보유 수량", "0", shInit, InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL, form);
         EditText avgEt = Widgets.formField(m, "평균 매입가 (" + q.currency + ")", "0", String.valueOf(q.avgCost), InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL, form);
         Widgets.showFormSheet(m, q.name + " 보유 편집", form, m.getString(R.string.save), () -> {
             try { q.shares = Math.max(0, Double.parseDouble(shEt.getText().toString().trim())); } catch (Exception ignored) {}
@@ -793,7 +801,7 @@ final class Pages {
             cv.drawPath(line, lineP);
 
             // 5. Latest Price Live Endpoint Dot (when not scrubbing)
-            int activeIdx = scrubIdx >= 0 ? scrubIdx : (pts.length - 1);
+            int activeIdx = Math.max(0, Math.min(pts.length - 1, scrubIdx >= 0 ? scrubIdx : (pts.length - 1)));
             float ax = plotL + (plotR - plotL) * activeIdx / (pts.length - 1);
             float ay = plotB - (float) ((pts[activeIdx] - min) / span) * (plotB - plotT);
             if (scrubIdx >= 0) {

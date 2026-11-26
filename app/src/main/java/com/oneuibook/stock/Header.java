@@ -164,8 +164,9 @@ final class Header extends View {
         if (vertical) pill.set(right - h, top, right, top + len);
         else pill.set(right - len, top, right, top + h);
         if (icons.length == 0) pill.setEmpty();
-        // Align backRect vertically dead-centre with the 46dp header pill row
-        backRect.set(Ui.dpf(16), top + Ui.dpf(1), Ui.dpf(16) + Ui.dpf(44), top + Ui.dpf(45));
+        // Align backRect vertically dead-centre with the 46dp header pill row, respecting sidebar left padding
+        float padL = getPaddingLeft();
+        backRect.set(padL + Ui.dpf(16), top + Ui.dpf(1), padL + Ui.dpf(16) + Ui.dpf(44), top + Ui.dpf(45));
     }
 
     @Override protected void onDraw(Canvas c) {
@@ -202,7 +203,8 @@ final class Header extends View {
         int fg = Ui.text();
         // back button: in G style a clean borderless chevron (<) like One UI 9.x; in A style a glass circle
         float bp = backP.value;
-        float titleX = Ui.lerp(Ui.dpf(Ui.gStyle ? 22 : 16), backRect.right + Ui.dpf(Ui.gStyle ? 6 : 12), Ui.clamp(bp, 0f, 1f));
+        float padL = getPaddingLeft();
+        float titleX = Ui.lerp(padL + Ui.dpf(Ui.gStyle ? 22 : 16), backRect.right + Ui.dpf(Ui.gStyle ? 6 : 12), Ui.clamp(bp, 0f, 1f));
         if (bp > 0.01f) {
             float s = Ui.lerp(0.35f, 1f, bp), ba = Ui.clamp(bp, 0f, 1f) * contentAlpha;
             RectF br = tmpRect;
@@ -230,18 +232,20 @@ final class Header extends View {
             float rightBound = pill.isEmpty() ? w - Ui.dpf(16) : pill.left - Ui.dpf(12);
             if (onTablet) {
                 // Keep header title cleanly to the left of the centred tablet top tab pill (zero overlap!)
-                float maxTabLeft = Math.max(titleX + Ui.dpf(80), (w - Math.min(rw * 0.42f, Ui.dpf(440)) - Ui.dpf(92)) / 2f - Ui.dpf(10));
+                float maxTabLeft = (w + padL - Math.min(rw * 0.42f, Ui.dpf(440)) - Ui.dpf(92)) / 2f - Ui.dpf(10);
                 rightBound = Math.min(rightBound, maxTabLeft);
             }
-            float avail = Math.max(Ui.dpf(40), rightBound - titleX);
-            float rowCy = vertical ? pill.top + Ui.dpf(23) : (pill.isEmpty() ? backRect.centerY() : pill.centerY());
-            // long names get smaller before anything is cut off
-            float ts = Ui.gStyle ? (onTablet ? 18f : 20f) : 17f;
-            titlePaint.setTextSize(Ui.sp(ts));
-            while (ts > 13f && titlePaint.measureText(title) > avail) { ts -= 1f; titlePaint.setTextSize(Ui.sp(ts)); }
-            CharSequence t = TextUtils.ellipsize(title, titlePaint, avail, TextUtils.TruncateAt.END);
-            float baseline = rowCy + titlePaint.getTextSize() * 0.36f;
-            c.drawText(t, 0, t.length(), titleX, baseline - Ui.dpf(3) * (1f - titleAlpha), titlePaint);
+            float avail = rightBound - titleX;
+            if (avail >= Ui.dpf(40)) {
+                float rowCy = vertical ? pill.top + Ui.dpf(23) : (pill.isEmpty() ? backRect.centerY() : pill.centerY());
+                // long names get smaller before anything is cut off
+                float ts = Ui.gStyle ? (onTablet ? 18f : 20f) : 17f;
+                titlePaint.setTextSize(Ui.sp(ts));
+                while (ts > 13f && titlePaint.measureText(title) > avail) { ts -= 1f; titlePaint.setTextSize(Ui.sp(ts)); }
+                CharSequence t = TextUtils.ellipsize(title, titlePaint, avail, TextUtils.TruncateAt.END);
+                float baseline = rowCy + titlePaint.getTextSize() * 0.36f;
+                c.drawText(t, 0, t.length(), titleX, baseline - Ui.dpf(3) * (1f - titleAlpha), titlePaint);
+            }
         }
         // pill action buttons: in G style, keep a crisp frosted pill surface even at top so icons always pop cleanly
         float k = morph.value;

@@ -276,6 +276,15 @@ final class Dock extends FrameLayout {
 
     void setImeOffset(int px) { imeOffset = px; placeField(); invalidate(); }
 
+    @Override protected void onDetachedFromWindow() {
+        if (hintShimmerAnim != null) hintShimmerAnim.cancel();
+        if (hintTypeAnim != null) hintTypeAnim.cancel();
+        if (searchAnim != null) searchAnim.cancel();
+        if (collapseAnim != null) collapseAnim.cancel();
+        if (miniShowAnim != null) miniShowAnim.cancel();
+        super.onDetachedFromWindow();
+    }
+
     boolean animating() {
         return lensX.running || lift.running || miniPress.running || searchPress.running || barPress.running
                 || (collapseAnim != null && collapseAnim.isRunning())
